@@ -15,7 +15,7 @@ import { ProductCatalog } from './models/ProductCatalog';
 import { Basket } from './models/Basket';
 import { Buyer } from './models/Buyer';
 import { WebLarekAPI } from './models/WebLarekAPI';
-import { API_URL, CDN_URL, REMOTE_API_URL, REMOTE_CDN_URL } from './utils/constants';
+import { API_URL, CDN_URL } from './utils/constants';
 import { apiProducts } from './utils/data';
 import { IBuyer, IProduct } from './types';
 
@@ -54,7 +54,7 @@ const previewCard = new PreviewCard(
   events,
 );
 
-let api = new WebLarekAPI(CDN_URL, API_URL);
+const api = new WebLarekAPI(CDN_URL, API_URL);
 let activeModal: 'preview' | 'basket' | 'order' | 'contacts' | 'success' | null = null;
 let catalogLoadFailed = false;
 
@@ -66,7 +66,6 @@ const renderHeader = () => {
 
 const renderCatalog = () => {
   const products = catalogModel.getItems();
-  const basketIds = new Set(basketModel.getItems().map((item) => item.id));
   const elements = products.map((product) => {
     const cardElement = cloneTemplate<HTMLButtonElement>(catalogCardTemplate);
     const card = new CatalogCard(cardElement, events);
@@ -76,7 +75,7 @@ const renderCatalog = () => {
       category: product.category,
       price: product.price,
       image: product.image,
-      inBasket: basketIds.has(product.id),
+      inBasket: basketModel.hasItem(product.id),
     });
     return cardElement;
   });
@@ -110,13 +109,12 @@ const renderBasket = () => {
 
 const renderOrderStep = () => {
   const buyer = buyerModel.getBuyerData();
-  const addressValid = buyer.address.length > 0;
-  const addressError = addressValid ? '' : 'Адрес доставки обязателен';
+  const addressValid = buyerModel.isValidAddress();
   return orderForm.render({
     payment: buyer.payment,
     address: buyer.address,
     isValid: addressValid,
-    errorText: addressError,
+    errorText: addressValid ? '' : 'Адрес доставки обязателен',
   });
 };
 
@@ -149,8 +147,7 @@ const openPreview = (product: IProduct) => {
 };
 
 const openBasket = () => {
-  const element = renderBasket();
-  modal.open(element);
+  modal.open(basketView.render());
   activeModal = 'basket';
 };
 
@@ -182,7 +179,7 @@ const closeModal = () => {
   }
 };
 
-const findProduct = (id: string) => catalogModel.getProduct(id) ?? basketModel.getItems().find((item) => item.id === id) ?? null;
+const getProductById = (id: string) => catalogModel.getProduct(id)
 
 catalogModel.on<IProduct[]>('catalog:changed', () => {
   renderCatalog();
@@ -198,10 +195,7 @@ catalogModel.on<{ product: IProduct | null }>('product:select', ({ product }) =>
 
 basketModel.on<{ items: IProduct[]; total: number }>('basket:changed', () => {
   renderHeader();
-  renderCatalog();
-  if (activeModal === 'basket') {
-    renderBasket();
-  }
+  renderBasket();
   if (activeModal === 'preview') {
     const preview = catalogModel.getPreview();
     if (preview) {
@@ -227,7 +221,7 @@ events.on<{ id: string }>('view:product-open', ({ id }) => {
 });
 
 events.on<{ id: string }>('view:product-add', ({ id }) => {
-  const product = findProduct(id);
+  const product = getProductById(id);
   if (product) {
     basketModel.addItem(product);
     closeModal();
@@ -235,7 +229,7 @@ events.on<{ id: string }>('view:product-add', ({ id }) => {
 });
 
 events.on<{ id: string }>('view:product-remove', ({ id }) => {
-  const product = findProduct(id);
+  const product = getProductById(id);
   if (product) {
     basketModel.removeItem(product);
     closeModal();
@@ -243,7 +237,7 @@ events.on<{ id: string }>('view:product-remove', ({ id }) => {
 });
 
 events.on<{ id: string }>('view:basket-remove', ({ id }) => {
-  const product = findProduct(id);
+  const product = getProductById(id);
   if (product) {
     basketModel.removeItem(product);
   }
@@ -278,28 +272,15 @@ events.on<{ field: keyof IBuyer; value: string }>('view:form-change', ({ field, 
 });
 
 events.on('view:checkout-next', () => {
-  const buyer = buyerModel.getBuyerData();
-  if (buyer.address.length === 0) {
-    renderOrderStep();
-    return;
-  }
   openContactsForm();
 });
 
 events.on('view:checkout-submit', async () => {
-  const validation = buyerModel.validateBuyerData();
-  if (!validation.isValid) {
-    renderContactsStep();
-    return;
-  }
-
   try {
     const buyer = buyerModel.getBuyerData();
+
     const order = await api.createOrder({
-      payment: buyer.payment,
-      email: buyer.email,
-      phone: buyer.phone,
-      address: buyer.address,
+      ...buyer,
       total: basketModel.getTotalPrice(),
       items: basketModel.getItems().map((item) => item.id),
     });
@@ -307,12 +288,7 @@ events.on('view:checkout-submit', async () => {
     basketModel.clearBasket();
     buyerModel.clearBuyerData();
   } catch (error) {
-    contactsForm.render({
-      email: buyerModel.getBuyerData().email,
-      phone: buyerModel.getBuyerData().phone,
-      isValid: false,
-      errorText: 'Не удалось оформить заказ. Попробуйте позже.',
-    });
+    contactsForm.showError('Не удалось оформить заказ. Попробуйте позже.')
   }
 });
 
@@ -324,47 +300,20 @@ events.on('view:success-close', () => {
   closeModal();
 });
 
-const loadCatalogFromSources = async () => {
-  const sources: Array<{ apiUrl: string; cdnUrl: string }> = [
-    { apiUrl: API_URL, cdnUrl: CDN_URL },
-  ];
-
-  if (!sources.some((source) => source.apiUrl === REMOTE_API_URL)) {
-    sources.push({ apiUrl: REMOTE_API_URL, cdnUrl: REMOTE_CDN_URL });
+const loadCatalog = async () => {
+  try {
+    const items = await api.getProductList();
+    catalogLoadFailed = false;
+    catalogModel.setItems(items);
+  } catch (error) {
+    console.error('Не удалось загрузить каталог', error);
+    catalogLoadFailed = true;
   }
-
-  let lastError: unknown = null;
-
-  for (const source of sources) {
-    try {
-      const sourceApi = new WebLarekAPI(source.cdnUrl, source.apiUrl);
-      const items = await sourceApi.getProductList();
-      api = sourceApi;
-      catalogLoadFailed = false;
-      catalogModel.setItems(items);
-      return true;
-    } catch (error) {
-      lastError = error;
-    }
-  }
-
-  console.error('Не удалось загрузить каталог с сервера', lastError);
-  catalogLoadFailed = true;
-  return false;
 };
 
 const bootstrap = async () => {
   renderHeader();
-  const success = await loadCatalogFromSources();
-
-  if (!success) {
-    const fallbackItems = apiProducts.items.map((item) => ({
-      ...item,
-      image: placeholderImage,
-    }));
-    catalogModel.setItems(fallbackItems);
-    catalogLoadFailed = fallbackItems.length === 0;
-  }
+  await loadCatalog();
 };
 
 bootstrap();

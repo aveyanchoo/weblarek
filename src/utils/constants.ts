@@ -1,8 +1,6 @@
 import { ProductCategory } from '../types';
 
-export const REMOTE_API_ORIGIN = 'https://larek-api.nomoreparties.co';
-
-const apiOrigin = (import.meta.env.VITE_API_ORIGIN ?? REMOTE_API_ORIGIN).replace(/\/$/, '');
+const apiOrigin = (import.meta.env.VITE_API_ORIGIN ?? 'https://larek-api.nomoreparties.co').replace(/\/$/, '');
 
 /* Константа для получения полного пути для сервера. Для выполнения запроса
 необходимо к API_URL добавить только ендпоинт. */
@@ -12,8 +10,6 @@ export const API_URL = `${apiOrigin}/api/weblarek`;
 которое хранится в объекте товара. */
 export const CDN_URL = `${apiOrigin}/content/weblarek`;
 
-export const REMOTE_API_URL = `${REMOTE_API_ORIGIN}/api/weblarek`;
-export const REMOTE_CDN_URL = `${REMOTE_API_ORIGIN}/content/weblarek`;
 
 export const settings = {};
 

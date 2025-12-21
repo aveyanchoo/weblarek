@@ -23,7 +23,7 @@ export abstract class BaseForm<T extends IBaseFormRenderData> extends Component<
     }
   }
 
-  protected showError(message?: string) {
+  showError(message?: string) {
     if (!this.errorsElement) {
       return;
     }

@@ -22,9 +22,19 @@ export class OrderSuccess extends Component<IOrderSuccessRenderData> {
   }
 
   override render(data?: Partial<IOrderSuccessRenderData>): HTMLElement {
-    if (this.descriptionElement && data?.total !== undefined) {
-      this.descriptionElement.textContent = `Списано ${data.total} ${priceLabel.currency}`;
+    if (data?.total !== undefined) {
+      this.renderTotal(data.total);
     }
     return this.container;
   }
+
+  private renderTotal(total: number): void {
+    if (!this.descriptionElement) {
+      return;
+    }
+
+    this.descriptionElement.textContent =
+      `Списано ${total} ${priceLabel.currency}`;
+  }
+
 }

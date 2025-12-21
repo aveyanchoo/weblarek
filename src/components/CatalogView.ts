@@ -10,13 +10,14 @@ export class CatalogView extends Component<ICatalogViewRenderData> {
   }
 
   override render(data?: Partial<ICatalogViewRenderData>): HTMLElement {
-    if (!data) {
-      return this.container;
+    if (data?.elements) {
+      this.renderItems(data.elements);
     }
-
-    const elements = data.elements ?? [];
-    this.container.replaceChildren(...elements);
-
     return this.container;
   }
+  
+  private renderItems(elements: HTMLElement[]): void {
+    this.container.replaceChildren(...elements);
+  }
+  
 }

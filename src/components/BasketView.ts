@@ -18,9 +18,11 @@ export class BasketView extends Component<IBasketViewRenderData> {
     private readonly events: IEvents,
   ) {
     super(container);
+
     this.listElement = container.querySelector('.basket__list');
     this.totalElement = container.querySelector('.basket__price');
     this.submitButton = container.querySelector<HTMLButtonElement>('.basket__button');
+
     this.emptyElement = document.createElement('li');
     this.emptyElement.className = 'basket__empty';
     this.emptyElement.textContent = 'Корзина пуста';
@@ -32,13 +34,27 @@ export class BasketView extends Component<IBasketViewRenderData> {
   }
 
   override render(data?: Partial<IBasketViewRenderData>): HTMLElement {
-    if (!this.listElement || !data) {
+    if (!data) {
       return this.container;
     }
 
-    this.listElement.replaceChildren();
+    if (data.elements) {
+      this.renderItems(data.elements);
+    }
 
-    const items = data.elements ?? [];
+    if (data.total !== undefined) {
+      this.renderTotal(data.total);
+    }
+
+    return this.container;
+  }
+
+  private renderItems(items: HTMLElement[]): void {
+    if (!this.listElement) {
+      return;
+    }
+
+    this.listElement.replaceChildren();
 
     if (items.length === 0) {
       this.listElement.append(this.emptyElement);
@@ -46,14 +62,22 @@ export class BasketView extends Component<IBasketViewRenderData> {
       this.listElement.append(...items);
     }
 
-    if (this.totalElement && data.total !== undefined) {
-      this.totalElement.textContent = `${data.total} ${priceLabel.currency}`;
+    this.toggleSubmitButton(items.length > 0);
+  }
+
+  private renderTotal(total: number): void {
+    if (!this.totalElement) {
+      return;
     }
 
-    if (this.submitButton) {
-      this.submitButton.disabled = items.length === 0;
+    this.totalElement.textContent = `${total} ${priceLabel.currency}`;
+  }
+
+  private toggleSubmitButton(enabled: boolean): void {
+    if (!this.submitButton) {
+      return;
     }
 
-    return this.container;
+    this.submitButton.disabled = !enabled;
   }
 }
