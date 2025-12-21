@@ -1,0 +1,24 @@
+@use "variables" as *;
+@use "mixins";
+
+.gallery {
+  @include mixins.container;
+  @include mixins.grid(600px, 24px);
+
+  &__item {
+    border: none;
+    border-radius: $defaultBorderRadius;
+    @include mixins.selectable($secondary, 2px, $primaryLight);
+
+    &::after {
+      border-radius: 0.8rem;
+    }
+  }
+
+  &__message {
+    grid-column: 1 / -1;
+    text-align: center;
+    color: $secondary;
+    font-size: 1.1rem;
+  }
+}
