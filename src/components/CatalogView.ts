@@ -15,9 +15,17 @@ export class CatalogView extends Component<ICatalogViewRenderData> {
     }
     return this.container;
   }
-  
+
   private renderItems(elements: HTMLElement[]): void {
     this.container.replaceChildren(...elements);
   }
-  
+
+  showErrorMessage(message: string): HTMLElement {
+    this.container.replaceChildren();
+    const errorElement = document.createElement('p');
+    errorElement.className = 'gallery__message';
+    errorElement.textContent = message;
+    this.container.append(errorElement);
+    return this.container;
+  }
 }

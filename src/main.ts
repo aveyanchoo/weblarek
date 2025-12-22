@@ -16,7 +16,6 @@ import { Basket } from './models/Basket';
 import { Buyer } from './models/Buyer';
 import { WebLarekAPI } from './models/WebLarekAPI';
 import { API_URL, CDN_URL } from './utils/constants';
-import { apiProducts } from './utils/data';
 import { IBuyer, IProduct } from './types';
 
 const events = new EventEmitter();
@@ -58,8 +57,6 @@ const api = new WebLarekAPI(CDN_URL, API_URL);
 let activeModal: 'preview' | 'basket' | 'order' | 'contacts' | 'success' | null = null;
 let catalogLoadFailed = false;
 
-const placeholderImage = new URL('./images/Subtract.svg', import.meta.url).href;
-
 const renderHeader = () => {
   header.render({ counter: basketModel.getItemCount() });
 };
@@ -80,13 +77,10 @@ const renderCatalog = () => {
     return cardElement;
   });
 
-  const catalogElement = catalogView.render({ elements });
-
   if (catalogLoadFailed && products.length === 0) {
-    const message = document.createElement('p');
-    message.className = 'gallery__message';
-    message.textContent = 'Не удалось загрузить каталог. Попробуйте позже.';
-    catalogElement.append(message);
+    catalogView.showErrorMessage('Не удалось загрузить каталог. Попробуйте позже.');
+  } else {
+    catalogView.render({ elements });
   }
 };
 
@@ -293,10 +287,6 @@ events.on('view:checkout-submit', async () => {
 });
 
 events.on('view:modal-close', () => {
-  closeModal();
-});
-
-events.on('view:success-close', () => {
   closeModal();
 });
 

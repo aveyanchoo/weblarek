@@ -27,11 +27,16 @@ export class BasketView extends Component<IBasketViewRenderData> {
     this.emptyElement.className = 'basket__empty';
     this.emptyElement.textContent = 'Корзина пуста';
 
-    this.submitButton?.addEventListener('click', (event) => {
-      event.preventDefault();
-      this.events.emit('view:checkout');
-    });
+    if (this.submitButton) {
+      this.submitButton.disabled = true;
+
+      this.submitButton?.addEventListener('click', (event) => {
+        event.preventDefault();
+        this.events.emit('view:checkout');
+      });
+    }
   }
+
 
   override render(data?: Partial<IBasketViewRenderData>): HTMLElement {
     if (!data) {
